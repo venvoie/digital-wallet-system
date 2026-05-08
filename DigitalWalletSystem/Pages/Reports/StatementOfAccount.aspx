@@ -1,15 +1,22 @@
 ﻿<%@ Page Title="Statement of Account" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="StatementOfAccount.aspx.cs" Inherits="DigitalWalletSystem.Pages.Reports.StatementOfAccount" %>
 
+<%-- head content placeholder (styles/scripts if needed) --%>
 <asp:Content ID="Content1" ContentPlaceHolderID="HeadContent" runat="server">
+    <style>
+        <%-- ensure numeric cells inherit the page font instead of the browser default monospace --%>
+        .cm-table td {
+            font-family: inherit;
+        }
+    </style>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
 
-    <%-- Filter Card --%>
+    <%-- filter card: date range inputs and list button --%>
     <div class="card" style="margin-bottom: 20px;">
         <div class="card-title">Statement of Account</div>
 
-        <%-- Error message --%>
+        <%-- error alert: shown when validation fails --%>
         <asp:Panel ID="pnlError" runat="server" Visible="false">
             <div class="alert alert-error">
                 <asp:Label ID="lblError" runat="server" Text="" />
@@ -18,13 +25,11 @@
 
         <div style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
 
-            <%-- From Date --%>
+            <%-- from date input — pre-filled with registration date on load --%>
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">From</label>
                 <asp:TextBox ID="txtFrom" runat="server"
-                    TextMode="Date"
-                    CssClass="form-control"
-                    style="width: 180px;" />
+                    TextMode="Date" CssClass="form-control" style="width: 180px;" />
                 <asp:RequiredFieldValidator ID="rfvFrom" runat="server"
                     ControlToValidate="txtFrom"
                     ErrorMessage="From date is required."
@@ -33,13 +38,11 @@
                     ValidationGroup="ReportGroup" />
             </div>
 
-            <%-- To Date --%>
+            <%-- to date input — pre-filled with today's date on load --%>
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">To</label>
                 <asp:TextBox ID="txtTo" runat="server"
-                    TextMode="Date"
-                    CssClass="form-control"
-                    style="width: 180px;" />
+                    TextMode="Date" CssClass="form-control" style="width: 180px;" />
                 <asp:RequiredFieldValidator ID="rfvTo" runat="server"
                     ControlToValidate="txtTo"
                     ErrorMessage="To date is required."
@@ -48,7 +51,7 @@
                     ValidationGroup="ReportGroup" />
             </div>
 
-            <%-- List Button --%>
+            <%-- list button — triggers date validation and reloads the table --%>
             <asp:Button ID="btnList" runat="server"
                 Text="List"
                 CssClass="btn btn-primary"
@@ -59,9 +62,11 @@
         </div>
     </div>
 
-    <%-- Results Card --%>
+    <%-- results card — visible on initial load and after list is clicked --%>
     <asp:Panel ID="pnlResults" runat="server" Visible="false">
         <div class="card">
+
+            <%-- section header: shows date range and record count --%>
             <div class="section-header">
                 <div class="section-title">
                     Transaction History &nbsp;
@@ -74,6 +79,7 @@
                 </span>
             </div>
 
+            <%-- transaction table --%>
             <div class="table-wrap">
                 <table class="cm-table">
                     <thead>
@@ -89,21 +95,37 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <%-- repeater: one row per transaction --%>
                         <asp:Repeater ID="rptStatement" runat="server">
                             <ItemTemplate>
                                 <tr>
+                                    <%-- sequential row number --%>
                                     <td><%# Container.ItemIndex + 1 %></td>
+
+                                    <%-- colored badge showing transaction type --%>
                                     <td>
                                         <span class="txn-badge <%# GetBadgeClass(Eval("TransactionType").ToString()) %>">
                                             <%# GetTypeLabel(Eval("TransactionType").ToString()) %>
                                         </span>
                                     </td>
-                                    <td class="mono"><%# Eval("TransactionDate", "{0:MM/dd/yyyy hh:mm tt}") %></td>
+
+                                    <%-- formatted transaction date and time --%>
+                                    <td><%# Eval("TransactionDate", "{0:MM/dd/yyyy hh:mm tt}") %></td>
+
+                                    <%-- debit column: shown for withdrawals and sends, dash otherwise --%>
                                     <td class="amount-neg"><%# Eval("Debit") != DBNull.Value ? "₱" + string.Format("{0:N2}", Eval("Debit")) : "—" %></td>
+
+                                    <%-- credit column: shown for deposits and receives, dash otherwise --%>
                                     <td class="amount-pos"><%# Eval("Credit") != DBNull.Value ? "₱" + string.Format("{0:N2}", Eval("Credit")) : "—" %></td>
-                                    <td class="mono"><strong>₱<%# Eval("BalanceAfter", "{0:N2}") %></strong></td>
-                                    <td class="mono"><%# Eval("SentToAccountNo") != DBNull.Value && Eval("SentToAccountNo").ToString() != "" ? Eval("SentToAccountNo").ToString() : "—" %></td>
-                                    <td class="mono"><%# Eval("ReceivedFromAccountNo") != DBNull.Value && Eval("ReceivedFromAccountNo").ToString() != "" ? Eval("ReceivedFromAccountNo").ToString() : "—" %></td>
+
+                                    <%-- running balance after each transaction --%>
+                                    <td><strong>₱<%# Eval("BalanceAfter", "{0:N2}") %></strong></td>
+
+                                    <%-- recipient account number for send transactions --%>
+                                    <td><%# Eval("SentToAccountNo") != DBNull.Value && Eval("SentToAccountNo").ToString() != "" ? Eval("SentToAccountNo").ToString() : "—" %></td>
+
+                                    <%-- sender account number for receive transactions --%>
+                                    <td><%# Eval("ReceivedFromAccountNo") != DBNull.Value && Eval("ReceivedFromAccountNo").ToString() != "" ? Eval("ReceivedFromAccountNo").ToString() : "—" %></td>
                                 </tr>
                             </ItemTemplate>
                         </asp:Repeater>
@@ -111,11 +133,17 @@
                 </table>
             </div>
 
-            <%-- No records message --%>
+            <%-- empty state: shown when no transactions exist for the selected range --%>
             <asp:Panel ID="pnlNoRecords" runat="server" Visible="false">
-                <p class="text-muted" style="text-align:center; padding: 24px 0; font-size:13px;">
-                    No transactions found for the selected date range.
-                </p>
+                <div style="text-align:center; padding:48px 24px; color:var(--text-muted);">
+                    <div style="font-size:48px; margin-bottom:12px;">🧾</div>
+                    <div style="font-size:15px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">
+                        No Records Found
+                    </div>
+                    <p style="font-size:13px; margin:0;">
+                        No transactions found for the selected date range.
+                    </p>
+                </div>
             </asp:Panel>
 
         </div>

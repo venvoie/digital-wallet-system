@@ -9,11 +9,12 @@ namespace DigitalWalletSystem.Pages.Account
 {
 	public partial class ChangePassword : Page
 	{
+		// ── page load — no data to fetch, master page handles the topbar ──
 		protected void Page_Load(object sender, EventArgs e)
 		{
-			// Master page handles topbar automatically from session
 		}
 
+		// ── handles the update password button click ──
 		protected void btnChangePassword_Click(object sender, EventArgs e)
 		{
 			if (!Page.IsValid) return;
@@ -24,7 +25,7 @@ namespace DigitalWalletSystem.Pages.Account
 			string currentHash = HashPassword(currentPassword);
 			string newHash = HashPassword(newPassword);
 
-			// ── Make sure new password is different ────────────────
+			// new password must be different from the current one
 			if (currentHash == newHash)
 			{
 				ShowError("Your new password must be different from your current password.");
@@ -37,7 +38,7 @@ namespace DigitalWalletSystem.Pages.Account
 			{
 				conn.Open();
 
-				// ── Verify current password is correct ─────────────
+				// verify that the entered current password matches the stored hash
 				string sqlCheck = @"
                     SELECT COUNT(1)
                     FROM   Users
@@ -57,7 +58,7 @@ namespace DigitalWalletSystem.Pages.Account
 					}
 				}
 
-				// ── Update to new password ─────────────────────────
+				// update the password hash in the database
 				string sqlUpdate = @"
                     UPDATE Users
                     SET    PasswordHash = @NewHash
@@ -70,11 +71,11 @@ namespace DigitalWalletSystem.Pages.Account
 					cmd.ExecuteNonQuery();
 				}
 
-				// ── Audit log ──────────────────────────────────────
+				// write a change password entry to the audit log
 				LogAudit(userID, "CHANGE_PASSWORD", conn);
 			}
 
-			// Clear the fields
+			// clear all password fields after a successful update
 			txtCurrentPassword.Text = "";
 			txtNewPassword.Text = "";
 			txtConfirmPassword.Text = "";
@@ -82,8 +83,7 @@ namespace DigitalWalletSystem.Pages.Account
 			ShowSuccess("Your password has been updated successfully!");
 		}
 
-		// ── Helpers ────────────────────────────────────────────────
-
+		// ── shows the error alert and hides the success alert ──
 		private void ShowError(string message)
 		{
 			pnlError.Visible = true;
@@ -91,6 +91,7 @@ namespace DigitalWalletSystem.Pages.Account
 			lblError.Text = message;
 		}
 
+		// ── shows the success alert and hides the error alert ──
 		private void ShowSuccess(string message)
 		{
 			pnlSuccess.Visible = true;
@@ -98,6 +99,7 @@ namespace DigitalWalletSystem.Pages.Account
 			lblSuccess.Text = message;
 		}
 
+		// ── returns a sha256 hex hash of the given plain-text password ──
 		private string HashPassword(string password)
 		{
 			using (SHA256 sha256 = SHA256.Create())
@@ -110,12 +112,15 @@ namespace DigitalWalletSystem.Pages.Account
 			}
 		}
 
+		// ── inserts a row into the audit log; silently ignores failures ──
 		private void LogAudit(int userID, string action, SqlConnection conn)
 		{
 			try
 			{
-				string sql = @"INSERT INTO AuditLog (UserID, Action, ActionDate, IPAddress)
-                               VALUES (@UserID, @Action, GETDATE(), @IP)";
+				string sql = @"
+                    INSERT INTO AuditLog (UserID, Action, ActionDate, IPAddress)
+                    VALUES (@UserID, @Action, GETDATE(), @IP)";
+
 				using (SqlCommand cmd = new SqlCommand(sql, conn))
 				{
 					cmd.Parameters.AddWithValue("@UserID", userID);
@@ -124,7 +129,7 @@ namespace DigitalWalletSystem.Pages.Account
 					cmd.ExecuteNonQuery();
 				}
 			}
-			catch { /* Audit failure should not break the page */ }
+			catch { /* audit failure should not break the page */ }
 		}
 	}
 }

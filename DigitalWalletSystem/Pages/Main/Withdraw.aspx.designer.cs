@@ -96,12 +96,12 @@ namespace DigitalWalletSystem.Pages.Main
 		protected global::System.Web.UI.WebControls.Button btnWithdraw;
 
 		/// <summary>
-		/// btnConfirmed control.
+		/// btnWithdrawConfirmed control.
 		/// </summary>
 		/// <remarks>
 		/// Auto-generated field.
 		/// To modify move field declaration from designer file to code-behind file.
 		/// </remarks>
-		protected global::System.Web.UI.WebControls.Button btnConfirmed;
+		protected global::System.Web.UI.WebControls.Button btnWithdrawConfirmed;
 	}
 }

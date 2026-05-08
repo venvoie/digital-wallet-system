@@ -8,6 +8,7 @@ namespace DigitalWalletSystem.Pages.Main
 {
 	public partial class Dashboard : Page
 	{
+		// ── page load — fetch and render all dashboard data on first visit ──
 		protected void Page_Load(object sender, EventArgs e)
 		{
 			if (!IsPostBack)
@@ -16,6 +17,7 @@ namespace DigitalWalletSystem.Pages.Main
 			}
 		}
 
+		// ── queries user info, wallet stats, notifications, and recent transactions ──
 		private void LoadDashboard()
 		{
 			int userID = Convert.ToInt32(Session["UserID"]);
@@ -25,7 +27,7 @@ namespace DigitalWalletSystem.Pages.Main
 			{
 				conn.Open();
 
-				// ── User + Wallet info ─────────────────────────────
+				// fetch user profile and wallet balance in a single joined query
 				string sqlUser = @"
                     SELECT  u.FullName,
                             u.AccountNumber,
@@ -43,13 +45,14 @@ namespace DigitalWalletSystem.Pages.Main
 
 					if (dr.Read())
 					{
+						// populate the hero balance card and user info labels
 						lblFullName.Text = dr["FullName"].ToString();
 						lblAccountNo.Text = dr["AccountNumber"].ToString();
 						lblBalance.Text = Convert.ToDecimal(dr["CurrentBalance"]).ToString("N2");
 						lblTotalSent.Text = Convert.ToDecimal(dr["TotalSentAmount"]).ToString("N2");
 						lblDateRegistered.Text = Convert.ToDateTime(dr["DateRegistered"]).ToString("MMMM dd, yyyy");
 
-						// Update topbar labels via master page
+						// pass name and account number up to the master page topbar
 						SiteMaster master = (SiteMaster)this.Master;
 						if (master != null)
 						{
@@ -62,7 +65,7 @@ namespace DigitalWalletSystem.Pages.Main
 					dr.Close();
 				}
 
-				// ── Per-type stats ─────────────────────────────────
+				// fetch transaction counts and totals grouped by type for the stats row
 				string sqlStats = @"
                     SELECT  TransactionType,
                             COUNT(*)        AS TxnCount,
@@ -82,6 +85,7 @@ namespace DigitalWalletSystem.Pages.Main
 						int count = Convert.ToInt32(dr["TxnCount"]);
 						decimal total = Convert.ToDecimal(dr["TotalAmount"]);
 
+						// assign each stat to the matching label based on transaction type
 						switch (type)
 						{
 							case "R":
@@ -104,7 +108,7 @@ namespace DigitalWalletSystem.Pages.Main
 					dr.Close();
 				}
 
-				// ── Recent received (notifications) — last 5 ──────
+				// fetch the five most recent received transactions for the notifications panel
 				string sqlNotifs = @"
                     SELECT  TOP 5
                             t.Amount,
@@ -123,6 +127,7 @@ namespace DigitalWalletSystem.Pages.Main
 					DataTable dt = new DataTable();
 					da.Fill(dt);
 
+					// show the empty state panel if no received transactions exist
 					if (dt.Rows.Count == 0)
 						pnlNoNotifs.Visible = true;
 					else
@@ -131,7 +136,7 @@ namespace DigitalWalletSystem.Pages.Main
 					rptNotifications.DataBind();
 				}
 
-				// ── Recent transactions — last 5 ───────────────────
+				// fetch the five most recent transactions of any type for the activity panel
 				string sqlTxn = @"
                     SELECT  TOP 5
                             TransactionType,
@@ -148,6 +153,7 @@ namespace DigitalWalletSystem.Pages.Main
 					DataTable dt = new DataTable();
 					da.Fill(dt);
 
+					// show the empty state panel if no transactions exist yet
 					if (dt.Rows.Count == 0)
 						pnlNoTxn.Visible = true;
 					else
@@ -158,8 +164,7 @@ namespace DigitalWalletSystem.Pages.Main
 			}
 		}
 
-		// ── Helpers used in the Repeater ItemTemplate ──────────────
-
+		// ── returns the css badge class for a given transaction type ──
 		protected string GetBadgeClass(string type)
 		{
 			switch (type)
@@ -172,6 +177,7 @@ namespace DigitalWalletSystem.Pages.Main
 			}
 		}
 
+		// ── returns a human-readable label for a given transaction type ──
 		protected string GetTypeLabel(string type)
 		{
 			switch (type)
@@ -184,6 +190,7 @@ namespace DigitalWalletSystem.Pages.Main
 			}
 		}
 
+		// ── returns true if the transaction type adds to the balance (deposit or receive) ──
 		protected bool IsCredit(string type)
 		{
 			return type == "D" || type == "R";

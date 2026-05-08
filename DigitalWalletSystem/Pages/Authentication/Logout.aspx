@@ -7,77 +7,64 @@
     <title>Logging Out — CloudMoney</title>
     <link href="~/Styles/Site.css" rel="stylesheet" type="text/css" runat="server" />
     <style>
-        .logout-overlay {
-            min-height: 100vh;
-            background: var(--bg-shell);
+        /* icon circle styled in red to signal a destructive action */
+        .logout-icon {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: #fee2e2;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        .logout-box {
-            background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 6px 30px rgba(30,60,120,.12);
-            padding: 48px 40px;
-            text-align: center;
-            width: 340px;
-        }
-        .logout-icon {
-            width: 68px; height: 68px;
-            border-radius: 50%;
-            background: #fee2e2;
-            display: flex; align-items: center; justify-content: center;
             margin: 0 auto 20px;
             font-size: 28px;
         }
-        .logout-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
+
+        /* subtitle text below the heading */
         .logout-sub {
             font-size: 13px;
             color: var(--text-secondary);
             margin-bottom: 28px;
             line-height: 1.6;
+            text-align: center;
         }
+
+        /* side-by-side button row */
         .btn-row {
             display: flex;
             gap: 10px;
         }
+
         .btn-row .btn {
             flex: 1;
-        }
-        .btn-cancel {
-            background: var(--accent-light);
-            color: var(--accent);
-            border: none;
-        }
-        .btn-cancel:hover {
-            background: #bfdbfe;
         }
     </style>
 </head>
 <body>
     <form id="form1" runat="server">
-        <div class="logout-overlay">
-            <div class="logout-box">
+        <div class="auth-page">
+            <div class="auth-card">
 
+                <%-- red icon circle indicating a logout action --%>
                 <div class="logout-icon">&#9099;</div>
 
-                <div class="logout-title">Log Out</div>
+                <div class="auth-heading">Log Out</div>
+
+                <%-- confirmation message before the user proceeds --%>
                 <div class="logout-sub">
                     Are you sure you want to log out of CloudMoney?<br />
                     You will be redirected to the login page.
                 </div>
 
+                <%-- cancel and confirm buttons side by side --%>
                 <div class="btn-row">
+                    <%-- cancel button — returns the user to the dashboard --%>
                     <asp:Button ID="btnCancel" runat="server"
                         Text="Cancel"
-                        CssClass="btn btn-cancel"
+                        CssClass="btn btn-secondary"
                         OnClick="btnCancel_Click" />
 
+                    <%-- confirm button — clears session and redirects to login --%>
                     <asp:Button ID="btnLogout" runat="server"
                         Text="Yes, Log Out"
                         CssClass="btn btn-danger"

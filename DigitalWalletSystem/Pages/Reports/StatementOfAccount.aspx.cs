@@ -8,16 +8,32 @@ namespace DigitalWalletSystem.Pages.Reports
 {
 	public partial class StatementOfAccount : Page
 	{
+		// ── page load — auto-display all transactions from registration date to today ──
 		protected void Page_Load(object sender, EventArgs e)
 		{
-			// nothing on load — user must click List
+			if (!IsPostBack)
+			{
+				int userID = Convert.ToInt32(Session["UserID"]);
+				string connStr = WebConfigurationManager.ConnectionStrings["CloudMoneyDB"].ConnectionString;
+
+				// fetch the user's registration date from the database
+				DateTime registeredDate = GetRegistrationDate(userID, connStr);
+
+				// pre-fill the date fields with the registration date and today
+				txtFrom.Text = registeredDate.ToString("yyyy-MM-dd");
+				txtTo.Text = DateTime.Today.ToString("yyyy-MM-dd");
+
+				// load all transactions using the registration date as the starting point
+				LoadTransactions(userID, connStr, registeredDate, DateTime.Today);
+			}
 		}
 
+		// ── list button — reloads based on user-selected date range ──
 		protected void btnList_Click(object sender, EventArgs e)
 		{
 			if (!Page.IsValid) return;
 
-			// ── Parse dates ────────────────────────────────────────
+			// parse the from date
 			DateTime fromDate, toDate;
 
 			if (!DateTime.TryParse(txtFrom.Text, out fromDate))
@@ -26,26 +42,28 @@ namespace DigitalWalletSystem.Pages.Reports
 				return;
 			}
 
+			// parse the to date
 			if (!DateTime.TryParse(txtTo.Text, out toDate))
 			{
 				ShowError("Please enter a valid To date.");
 				return;
 			}
 
-			// ── Dates must not be future dates ─────────────────────
+			// from date must not be a future date
 			if (fromDate.Date > DateTime.Today)
 			{
 				ShowError("From date must not be a future date.");
 				return;
 			}
 
+			// to date must not be a future date
 			if (toDate.Date > DateTime.Today)
 			{
 				ShowError("To date must not be a future date.");
 				return;
 			}
 
-			// ── From must be less than or equal to To ──────────────
+			// from date must be earlier than or equal to to date
 			if (fromDate.Date > toDate.Date)
 			{
 				ShowError("From date must be earlier than or equal to the To date.");
@@ -57,9 +75,40 @@ namespace DigitalWalletSystem.Pages.Reports
 			int userID = Convert.ToInt32(Session["UserID"]);
 			string connStr = WebConfigurationManager.ConnectionStrings["CloudMoneyDB"].ConnectionString;
 
+			LoadTransactions(userID, connStr, fromDate, toDate);
+		}
+
+		// ── fetches the user's registration date from the users table ──
+		private DateTime GetRegistrationDate(int userID, string connStr)
+		{
+			DateTime registeredDate = DateTime.Today;
+
 			using (SqlConnection conn = new SqlConnection(connStr))
 			{
-				// Include full day for toDate (up to 23:59:59)
+				string sql = "SELECT DateRegistered FROM Users WHERE UserID = @UserID";
+
+				using (SqlCommand cmd = new SqlCommand(sql, conn))
+				{
+					cmd.Parameters.AddWithValue("@UserID", userID);
+					conn.Open();
+
+					object result = cmd.ExecuteScalar();
+
+					// use the fetched date if valid, otherwise fall back to today
+					if (result != null && result != DBNull.Value)
+						registeredDate = Convert.ToDateTime(result);
+				}
+			}
+
+			return registeredDate;
+		}
+
+		// ── queries and displays transactions for the given date range ──
+		private void LoadTransactions(int userID, string connStr, DateTime fromDate, DateTime toDate)
+		{
+			using (SqlConnection conn = new SqlConnection(connStr))
+			{
+				// extend to date to include the full day up to 23:59:59
 				DateTime toDateEnd = toDate.Date.AddDays(1).AddSeconds(-1);
 
 				string sql = @"
@@ -93,12 +142,14 @@ namespace DigitalWalletSystem.Pages.Reports
 
 					if (dt.Rows.Count == 0)
 					{
+						// no transactions found for the selected date range
 						pnlNoRecords.Visible = true;
 						rptStatement.Visible = false;
 						lblRowCount.Text = "0";
 					}
 					else
 					{
+						// bind the result set to the repeater
 						pnlNoRecords.Visible = false;
 						rptStatement.Visible = true;
 						rptStatement.DataSource = dt;
@@ -106,13 +157,13 @@ namespace DigitalWalletSystem.Pages.Reports
 						lblRowCount.Text = dt.Rows.Count.ToString();
 					}
 
+					// display the active date range in the section header
 					lblDateRange.Text = $"{fromDate:MMM dd, yyyy} — {toDate:MMM dd, yyyy}";
 				}
 			}
 		}
 
-		// ── Helpers used in Repeater ───────────────────────────────
-
+		// ── returns the css badge class based on transaction type ──
 		protected string GetBadgeClass(string type)
 		{
 			switch (type)
@@ -125,6 +176,7 @@ namespace DigitalWalletSystem.Pages.Reports
 			}
 		}
 
+		// ── returns a human-readable label for each transaction type ──
 		protected string GetTypeLabel(string type)
 		{
 			switch (type)
@@ -137,6 +189,7 @@ namespace DigitalWalletSystem.Pages.Reports
 			}
 		}
 
+		// ── shows the error panel with the given message and hides the results ──
 		private void ShowError(string message)
 		{
 			pnlError.Visible = true;

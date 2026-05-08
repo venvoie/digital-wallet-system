@@ -1,1 +1,1 @@
-﻿// BundleConfig removed — not used in this project
+﻿// bundleConfig removed — not used in this project

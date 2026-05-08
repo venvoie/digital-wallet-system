@@ -1,14 +1,16 @@
 ﻿<%@ Page Title="Account Info" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="AccountInfo.aspx.cs" Inherits="DigitalWalletSystem.Pages.Account.AccountInfo" %>
 
+<%-- head content placeholder --%>
 <asp:Content ID="Content1" ContentPlaceHolderID="HeadContent" runat="server">
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
 
-    <div class="card" style="max-width: 620px;">
+    <%-- account info card — full width with symmetric horizontal margins --%>
+    <div class="card" style="max-width: 100%; margin-left: 0; margin-right: 0;">
         <div class="card-title">Account Information</div>
 
-        <%-- Account No. --%>
+        <%-- account number --%>
         <div class="info-row">
             <div class="info-key">Account Number</div>
             <div class="info-val mono">
@@ -16,7 +18,7 @@
             </div>
         </div>
 
-        <%-- Full Name --%>
+        <%-- full name --%>
         <div class="info-row">
             <div class="info-key">Full Name</div>
             <div class="info-val">
@@ -24,7 +26,7 @@
             </div>
         </div>
 
-        <%-- Username --%>
+        <%-- username --%>
         <div class="info-row">
             <div class="info-key">Username</div>
             <div class="info-val">
@@ -32,7 +34,7 @@
             </div>
         </div>
 
-        <%-- Email --%>
+        <%-- email address --%>
         <div class="info-row">
             <div class="info-key">Email Address</div>
             <div class="info-val">
@@ -40,7 +42,7 @@
             </div>
         </div>
 
-        <%-- Date Registered --%>
+        <%-- date registered --%>
         <div class="info-row">
             <div class="info-key">Date Registered</div>
             <div class="info-val">
@@ -48,17 +50,17 @@
             </div>
         </div>
 
-        <%-- Current Balance --%>
+        <%-- current balance — green, same font size as surrounding text --%>
         <div class="info-row">
             <div class="info-key">Current Balance</div>
             <div class="info-val">
-                <span style="color: var(--green); font-weight: 700; font-size: 15px;">
+                <span style="color: var(--green); font-weight: 700;">
                     &#8369; <asp:Label ID="lblBalance" runat="server" Text="0.00" />
                 </span>
             </div>
         </div>
 
-        <%-- Total Sent --%>
+        <%-- total sent — red, same font size as surrounding text --%>
         <div class="info-row">
             <div class="info-key">Total Sent</div>
             <div class="info-val">
@@ -68,7 +70,7 @@
             </div>
         </div>
 
-        <%-- Status --%>
+        <%-- account status — rendered as an active or inactive badge --%>
         <div class="info-row">
             <div class="info-key">Account Status</div>
             <div class="info-val">
@@ -76,15 +78,7 @@
             </div>
         </div>
 
-        <%-- Action buttons --%>
-        <div style="margin-top: 24px; display: flex; gap: 10px;">
-            <a href="~/Pages/Account/ChangePassword.aspx" runat="server" class="btn btn-secondary" style="text-decoration:none; width:auto; padding: 10px 20px;">
-                &#128274; Change Password
-            </a>
-            <a href="~/Pages/Authentication/Logout.aspx" runat="server" class="btn btn-danger" style="text-decoration:none; width:auto; padding: 10px 20px;">
-                &#9099; Log Out
-            </a>
-        </div>
+
 
     </div>
 

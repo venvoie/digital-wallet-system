@@ -24,13 +24,49 @@ namespace DigitalWalletSystem
 		protected global::System.Web.UI.WebControls.ContentPlaceHolder HeadContent;
 
 		/// <summary>
-		/// lblPageTitle control.
+		/// pnlNotifBadge control.
 		/// </summary>
 		/// <remarks>
 		/// Auto-generated field.
 		/// To modify move field declaration from designer file to code-behind file.
 		/// </remarks>
-		protected global::System.Web.UI.WebControls.Label lblPageTitle;
+		protected global::System.Web.UI.WebControls.Panel pnlNotifBadge;
+
+		/// <summary>
+		/// lblNotifCount control.
+		/// </summary>
+		/// <remarks>
+		/// Auto-generated field.
+		/// To modify move field declaration from designer file to code-behind file.
+		/// </remarks>
+		protected global::System.Web.UI.WebControls.Label lblNotifCount;
+
+		/// <summary>
+		/// btnMarkAllRead control.
+		/// </summary>
+		/// <remarks>
+		/// Auto-generated field.
+		/// To modify move field declaration from designer file to code-behind file.
+		/// </remarks>
+		protected global::System.Web.UI.WebControls.Button btnMarkAllRead;
+
+		/// <summary>
+		/// pnlNoNotifs control.
+		/// </summary>
+		/// <remarks>
+		/// Auto-generated field.
+		/// To modify move field declaration from designer file to code-behind file.
+		/// </remarks>
+		protected global::System.Web.UI.WebControls.Panel pnlNoNotifs;
+
+		/// <summary>
+		/// rptNotifications control.
+		/// </summary>
+		/// <remarks>
+		/// Auto-generated field.
+		/// To modify move field declaration from designer file to code-behind file.
+		/// </remarks>
+		protected global::System.Web.UI.WebControls.Repeater rptNotifications;
 
 		/// <summary>
 		/// lblUserName control.

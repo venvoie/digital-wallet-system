@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Data;
 using System.Data.SqlClient;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,31 +9,35 @@ namespace DigitalWalletSystem.Pages.Authentication
 {
 	public partial class Register : Page
 	{
+		// ── page load — skip registration if the user is already logged in ──
 		protected void Page_Load(object sender, EventArgs e)
 		{
-			// If already logged in, redirect to dashboard
+			// redirect straight to dashboard if a valid session already exists
 			if (Session["UserID"] != null)
 				Response.Redirect("~/Pages/Main/Dashboard.aspx");
 		}
 
+		// ── handles the create account button click ──
 		protected void btnRegister_Click(object sender, EventArgs e)
 		{
 			if (!Page.IsValid) return;
 
-			// ── Terms and Conditions check ─────────────────────────
+			// user must accept the terms and conditions before registering
 			if (!chkTerms.Checked)
 			{
 				ShowError("You must agree to the Terms and Conditions to register.");
 				return;
 			}
 
-			// ── Gather inputs ──────────────────────────────────────
+			// build the full name from first and last name inputs
 			string firstName = txtFirstName.Text.Trim();
 			string lastName = txtLastName.Text.Trim();
 			string fullName = firstName + " " + lastName;
 			string email = txtEmail.Text.Trim();
 			string username = txtUsername.Text.Trim();
 			string password = txtPassword.Text;
+
+			// hash the password before storing — never saved as plain text
 			string passHash = HashPassword(password);
 
 			string connStr = WebConfigurationManager.ConnectionStrings["CloudMoneyDB"].ConnectionString;
@@ -43,24 +46,24 @@ namespace DigitalWalletSystem.Pages.Authentication
 			{
 				conn.Open();
 
-				// ── Check for duplicate email ──────────────────────
+				// reject registration if the email is already in use
 				if (EmailExists(email, conn))
 				{
 					ShowError("That email address is already registered.");
 					return;
 				}
 
-				// ── Check for duplicate username ───────────────────
+				// reject registration if the username is already taken
 				if (UsernameExists(username, conn))
 				{
 					ShowError("That username is already taken. Please choose another.");
 					return;
 				}
 
-				// ── Generate unique account number ─────────────────
+				// generate a unique 10-digit account number for the new user
 				string accountNumber = GenerateAccountNumber(conn);
 
-				// ── Insert into Users table ────────────────────────
+				// insert the new user record and retrieve the generated userid
 				string insertUser = @"
                     INSERT INTO Users
                         (AccountNumber, FullName, Username, PasswordHash, Email, DateRegistered, IsActive)
@@ -80,7 +83,7 @@ namespace DigitalWalletSystem.Pages.Authentication
 					newUserID = (int)cmd.ExecuteScalar();
 				}
 
-				// ── Create wallet for the new user ─────────────────
+				// create an empty wallet record for the new user starting at zero balance
 				string insertWallet = @"
                     INSERT INTO Wallets (UserID, CurrentBalance, TotalSentAmount, LastUpdated)
                     VALUES (@UserID, 0.00, 0.00, GETDATE())";
@@ -91,17 +94,16 @@ namespace DigitalWalletSystem.Pages.Authentication
 					cmd.ExecuteNonQuery();
 				}
 
-				// ── Audit log ──────────────────────────────────────
+				// write a registration entry to the audit log
 				LogAudit(newUserID, "REGISTER", conn);
 			}
 
-			// ── Show success popup then redirect via JS ────────────
+			// trigger the success overlay and redirect via javascript
 			ScriptManager.RegisterStartupScript(this, GetType(),
 				"successPopup", "showSuccessAndRedirect();", true);
 		}
 
-		// ── Helpers ────────────────────────────────────────────────
-
+		// ── returns true if the email is already registered ──
 		private bool EmailExists(string email, SqlConnection conn)
 		{
 			using (SqlCommand cmd = new SqlCommand(
@@ -112,6 +114,7 @@ namespace DigitalWalletSystem.Pages.Authentication
 			}
 		}
 
+		// ── returns true if the username is already taken ──
 		private bool UsernameExists(string username, SqlConnection conn)
 		{
 			using (SqlCommand cmd = new SqlCommand(
@@ -122,13 +125,14 @@ namespace DigitalWalletSystem.Pages.Authentication
 			}
 		}
 
+		// ── generates a unique 10-digit account number not already in the database ──
 		private string GenerateAccountNumber(SqlConnection conn)
 		{
 			Random rng = new Random();
 			string accountNumber;
 			bool exists;
 
-			// Keep generating until we get a unique one
+			// keep generating random numbers until a unique one is found
 			do
 			{
 				accountNumber = rng.Next(1000000000, 2000000000).ToString();
@@ -143,30 +147,38 @@ namespace DigitalWalletSystem.Pages.Authentication
 			return accountNumber;
 		}
 
+		// ── shows the error alert with the given message ──
 		private void ShowError(string message)
 		{
 			pnlError.Visible = true;
 			lblError.Text = message;
 		}
 
+		// ── returns a sha256 hex hash of the given plain-text password ──
 		private string HashPassword(string password)
 		{
 			using (SHA256 sha256 = SHA256.Create())
 			{
 				byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
 				StringBuilder sb = new StringBuilder();
+
+				// convert each byte to a two-character hex string
 				foreach (byte b in bytes)
 					sb.Append(b.ToString("x2"));
+
 				return sb.ToString();
 			}
 		}
 
+		// ── inserts a row into the audit log; silently ignores failures ──
 		private void LogAudit(int userID, string action, SqlConnection conn)
 		{
 			try
 			{
-				string sql = @"INSERT INTO AuditLog (UserID, Action, ActionDate, IPAddress)
-                               VALUES (@UserID, @Action, GETDATE(), @IP)";
+				string sql = @"
+                    INSERT INTO AuditLog (UserID, Action, ActionDate, IPAddress)
+                    VALUES (@UserID, @Action, GETDATE(), @IP)";
+
 				using (SqlCommand cmd = new SqlCommand(sql, conn))
 				{
 					cmd.Parameters.AddWithValue("@UserID", userID);
@@ -175,7 +187,7 @@ namespace DigitalWalletSystem.Pages.Authentication
 					cmd.ExecuteNonQuery();
 				}
 			}
-			catch { /* Audit failure should not break registration */ }
+			catch { /* audit log failure should not break the registration flow */ }
 		}
 	}
 }

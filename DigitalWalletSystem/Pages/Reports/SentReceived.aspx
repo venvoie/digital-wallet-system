@@ -1,15 +1,22 @@
 ﻿<%@ Page Title="Sent & Received Transactions" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="SentReceived.aspx.cs" Inherits="DigitalWalletSystem.Pages.Reports.SentReceived" %>
 
+<%-- head content placeholder — font fix for number cells --%>
 <asp:Content ID="Content1" ContentPlaceHolderID="HeadContent" runat="server">
+    <style>
+        <%-- ensure numeric cells inherit the page font instead of the browser default monospace --%>
+        .cm-table td {
+            font-family: inherit;
+        }
+    </style>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
 
-    <%-- Filter Card --%>
+    <%-- filter card: date range inputs, type dropdown, and list button --%>
     <div class="card" style="margin-bottom: 20px;">
         <div class="card-title">Sent &amp; Received Transactions</div>
 
-        <%-- Error message --%>
+        <%-- error alert: shown when validation fails --%>
         <asp:Panel ID="pnlError" runat="server" Visible="false">
             <div class="alert alert-error">
                 <asp:Label ID="lblError" runat="server" Text="" />
@@ -18,7 +25,7 @@
 
         <div style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
 
-            <%-- From Date --%>
+            <%-- from date input — pre-filled with registration date on load --%>
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">From</label>
                 <asp:TextBox ID="txtFrom" runat="server"
@@ -33,7 +40,7 @@
                     ValidationGroup="ReportGroup" />
             </div>
 
-            <%-- To Date --%>
+            <%-- to date input — pre-filled with today's date on load --%>
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">To</label>
                 <asp:TextBox ID="txtTo" runat="server"
@@ -48,17 +55,17 @@
                     ValidationGroup="ReportGroup" />
             </div>
 
-            <%-- Type Filter --%>
+            <%-- type filter dropdown — all, sent, or received --%>
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label">Type</label>
                 <asp:DropDownList ID="ddlType" runat="server" CssClass="form-control" style="width: 160px;">
-                    <asp:ListItem Text="All"      Value="All"  Selected="True" />
+                    <asp:ListItem Text="All"      Value="All" Selected="True" />
                     <asp:ListItem Text="Sent"     Value="S" />
                     <asp:ListItem Text="Received" Value="R" />
                 </asp:DropDownList>
             </div>
 
-            <%-- List Button --%>
+            <%-- list button — triggers validation and reloads the table --%>
             <asp:Button ID="btnList" runat="server"
                 Text="List"
                 CssClass="btn btn-primary"
@@ -69,9 +76,11 @@
         </div>
     </div>
 
-    <%-- Results Card --%>
+    <%-- results card — visible on initial load and after list is clicked --%>
     <asp:Panel ID="pnlResults" runat="server" Visible="false">
         <div class="card">
+
+            <%-- section header: shows active date range, type filter, and record count --%>
             <div class="section-header">
                 <div class="section-title">
                     Results &nbsp;
@@ -84,6 +93,7 @@
                 </span>
             </div>
 
+            <%-- transaction table --%>
             <div class="table-wrap">
                 <table class="cm-table">
                     <thead>
@@ -97,25 +107,37 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <%-- repeater: one row per transaction --%>
                         <asp:Repeater ID="rptResults" runat="server">
                             <ItemTemplate>
                                 <tr>
+                                    <%-- sequential row number --%>
                                     <td><%# Container.ItemIndex + 1 %></td>
+
+                                    <%-- colored badge showing sent or received --%>
                                     <td>
                                         <span class="txn-badge <%# Eval("TransactionType").ToString() == "S" ? "send" : "receive" %>">
                                             <%# Eval("TransactionType").ToString() == "S" ? "Sent" : "Received" %>
                                         </span>
                                     </td>
-                                    <td class="mono"><%# Eval("TransactionDate", "{0:MM/dd/yyyy hh:mm tt}") %></td>
+
+                                    <%-- formatted transaction date and time --%>
+                                    <td><%# Eval("TransactionDate", "{0:MM/dd/yyyy hh:mm tt}") %></td>
+
+                                    <%-- amount: red with minus for sent, green with plus for received --%>
                                     <td class='<%# Eval("TransactionType").ToString() == "S" ? "amount-neg" : "amount-pos" %>'>
                                         <%# Eval("TransactionType").ToString() == "S" ? "-" : "+" %>&#8369;<%# Eval("Amount", "{0:N2}") %>
                                     </td>
-                                    <td class="mono">
+
+                                    <%-- recipient account number for sent transactions, dash otherwise --%>
+                                    <td>
                                         <%# Eval("SentToAccountNo") != DBNull.Value && Eval("SentToAccountNo").ToString() != ""
                                             ? Eval("SentToAccountNo").ToString()
                                             : "—" %>
                                     </td>
-                                    <td class="mono">
+
+                                    <%-- sender account number for received transactions, dash otherwise --%>
+                                    <td>
                                         <%# Eval("ReceivedFromAccountNo") != DBNull.Value && Eval("ReceivedFromAccountNo").ToString() != ""
                                             ? Eval("ReceivedFromAccountNo").ToString()
                                             : "—" %>
@@ -127,11 +149,17 @@
                 </table>
             </div>
 
-            <%-- No records message --%>
+            <%-- empty state: shown when no records match the selected range and type --%>
             <asp:Panel ID="pnlNoRecords" runat="server" Visible="false">
-                <p class="text-muted" style="text-align:center; padding: 24px 0; font-size:13px;">
-                    No records found for the selected date range and type.
-                </p>
+                <div style="text-align:center; padding:48px 24px; color:var(--text-muted);">
+                    <div style="font-size:48px; margin-bottom:12px;">🧾</div>
+                    <div style="font-size:15px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">
+                        No Records Found
+                    </div>
+                    <p style="font-size:13px; margin:0;">
+                        No transactions found for the selected date range and type.
+                    </p>
+                </div>
             </asp:Panel>
 
         </div>

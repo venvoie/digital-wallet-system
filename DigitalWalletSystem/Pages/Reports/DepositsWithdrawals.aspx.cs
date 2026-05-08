@@ -3,22 +3,37 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Web.Configuration;
 using System.Web.UI;
-using WebGrease.Activities;
 
 namespace DigitalWalletSystem.Pages.Reports
 {
 	public partial class DepositsWithdrawals : Page
 	{
+		// ── page load — auto-display all deposits and withdrawals from registration date to today ──
 		protected void Page_Load(object sender, EventArgs e)
 		{
-			// nothing on load — user must click List
+			if (!IsPostBack)
+			{
+				int userID = Convert.ToInt32(Session["UserID"]);
+				string connStr = WebConfigurationManager.ConnectionStrings["CloudMoneyDB"].ConnectionString;
+
+				// fetch the user's registration date to use as the default from date
+				DateTime registeredDate = GetRegistrationDate(userID, connStr);
+
+				// pre-fill the date fields with registration date and today
+				txtFrom.Text = registeredDate.ToString("yyyy-MM-dd");
+				txtTo.Text = DateTime.Today.ToString("yyyy-MM-dd");
+
+				// load all deposits and withdrawals using the default date range and type filter
+				LoadTransactions(userID, connStr, registeredDate, DateTime.Today, ddlType.SelectedValue);
+			}
 		}
 
+		// ── list button — reloads the table based on user-selected filters ──
 		protected void btnList_Click(object sender, EventArgs e)
 		{
 			if (!Page.IsValid) return;
 
-			// ── Parse dates ────────────────────────────────────────
+			// parse the from date
 			DateTime fromDate, toDate;
 
 			if (!DateTime.TryParse(txtFrom.Text, out fromDate))
@@ -27,26 +42,28 @@ namespace DigitalWalletSystem.Pages.Reports
 				return;
 			}
 
+			// parse the to date
 			if (!DateTime.TryParse(txtTo.Text, out toDate))
 			{
 				ShowError("Please enter a valid To date.");
 				return;
 			}
 
-			// ── Dates must not be future dates ─────────────────────
+			// from date must not be a future date
 			if (fromDate.Date > DateTime.Today)
 			{
 				ShowError("From date must not be a future date.");
 				return;
 			}
 
+			// to date must not be a future date
 			if (toDate.Date > DateTime.Today)
 			{
 				ShowError("To date must not be a future date.");
 				return;
 			}
 
-			// ── From must be less than or equal to To ──────────────
+			// from date must be earlier than or equal to to date
 			if (fromDate.Date > toDate.Date)
 			{
 				ShowError("From date must be earlier than or equal to the To date.");
@@ -56,14 +73,45 @@ namespace DigitalWalletSystem.Pages.Reports
 			pnlError.Visible = false;
 
 			int userID = Convert.ToInt32(Session["UserID"]);
-			string type = ddlType.SelectedValue;
 			string connStr = WebConfigurationManager.ConnectionStrings["CloudMoneyDB"].ConnectionString;
+
+			LoadTransactions(userID, connStr, fromDate, toDate, ddlType.SelectedValue);
+		}
+
+		// ── fetches the user's registration date from the users table ──
+		private DateTime GetRegistrationDate(int userID, string connStr)
+		{
+			DateTime registeredDate = DateTime.Today;
 
 			using (SqlConnection conn = new SqlConnection(connStr))
 			{
+				string sql = "SELECT DateRegistered FROM Users WHERE UserID = @UserID";
+
+				using (SqlCommand cmd = new SqlCommand(sql, conn))
+				{
+					cmd.Parameters.AddWithValue("@UserID", userID);
+					conn.Open();
+
+					object result = cmd.ExecuteScalar();
+
+					// use the fetched date if valid, otherwise fall back to today
+					if (result != null && result != DBNull.Value)
+						registeredDate = Convert.ToDateTime(result);
+				}
+			}
+
+			return registeredDate;
+		}
+
+		// ── queries and displays deposits/withdrawals for the given date range and type filter ──
+		private void LoadTransactions(int userID, string connStr, DateTime fromDate, DateTime toDate, string type)
+		{
+			using (SqlConnection conn = new SqlConnection(connStr))
+			{
+				// extend to date to include the full day up to 23:59:59
 				DateTime toDateEnd = toDate.Date.AddDays(1).AddSeconds(-1);
 
-				// ── Build query based on type filter ───────────────
+				// base query — always restricts to deposits and withdrawals only
 				string sql = @"
                     SELECT
                         TransactionType,
@@ -75,7 +123,7 @@ namespace DigitalWalletSystem.Pages.Reports
                     AND   TransactionDate <= @ToDate
                     AND   TransactionType IN ('D', 'W')";
 
-				// Append type filter if not All
+				// append type filter if the user selected a specific type
 				if (type == "D")
 					sql += " AND TransactionType = 'D'";
 				else if (type == "W")
@@ -97,12 +145,14 @@ namespace DigitalWalletSystem.Pages.Reports
 
 					if (dt.Rows.Count == 0)
 					{
+						// no records found for the selected range and type
 						pnlNoRecords.Visible = true;
 						rptResults.Visible = false;
 						lblRowCount.Text = "0";
 					}
 					else
 					{
+						// bind the result set to the repeater
 						pnlNoRecords.Visible = false;
 						rptResults.Visible = true;
 						rptResults.DataSource = dt;
@@ -110,15 +160,18 @@ namespace DigitalWalletSystem.Pages.Reports
 						lblRowCount.Text = dt.Rows.Count.ToString();
 					}
 
-					string typeLabel = type == "All" ? "All"
-									 : type == "D" ? "Deposits"
-									 : "Withdrawals";
+					// build a readable label for the active type filter
+					string typeLabel = type == "D" ? "Deposits"
+									 : type == "W" ? "Withdrawals"
+									 : "All";
 
+					// display the active date range and type in the section header
 					lblDateRange.Text = $"{fromDate:MMM dd, yyyy} — {toDate:MMM dd, yyyy} · {typeLabel}";
 				}
 			}
 		}
 
+		// ── shows the error panel with the given message and hides the results ──
 		private void ShowError(string message)
 		{
 			pnlError.Visible = true;

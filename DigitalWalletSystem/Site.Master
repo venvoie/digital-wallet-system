@@ -5,10 +5,171 @@
 <head runat="server">
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%: Page.Title %> - CloudMoney</title>
+    <title><%: Page.Title %> • CloudMoney</title>
     <link href="~/Styles/Site.css" rel="stylesheet" type="text/css" />
     <link href="~/favicon.ico" rel="shortcut icon" type="image/x-icon" />
     <asp:ContentPlaceHolder ID="HeadContent" runat="server" />
+
+    <style>
+        /* ── notification bell wrapper ── */
+        .notif-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-right: 16px;
+        }
+
+        /* bell button itself */
+        .notif-bell {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 20px;
+            padding: 4px;
+            line-height: 1;
+            transition: color 0.15s;
+        }
+
+        .notif-bell:hover {
+            color: var(--text-primary);
+        }
+
+        /* unread count badge sitting on top-right of the bell */
+        .notif-badge {
+            position: absolute;
+            top: -4px;
+            right: -6px;
+            background: var(--red, #e53935);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 17px;
+            height: 17px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 3px;
+            pointer-events: none;
+        }
+
+        /* dropdown panel */
+        .notif-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 12px);
+            right: -8px;
+            width: 340px;
+            background: var(--card-bg, #1e1e2e);
+            border: 1px solid var(--border, rgba(255,255,255,0.08));
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+            z-index: 8888;
+            overflow: hidden;
+        }
+
+        /* show class toggled by js */
+        .notif-dropdown.open {
+            display: block;
+        }
+
+        /* dropdown header row */
+        .notif-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px 10px;
+            border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
+        }
+
+        .notif-header-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* mark all as read button */
+        .notif-mark-read {
+            font-size: 11px;
+            color: var(--primary, #5b8af5);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .notif-mark-read:hover {
+            text-decoration: underline;
+        }
+
+        /* scrollable list area */
+        .notif-list {
+            max-height: 340px;
+            overflow-y: auto;
+        }
+
+        /* individual notification row */
+        .notif-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border, rgba(255,255,255,0.05));
+            transition: background 0.12s;
+        }
+
+        .notif-row:last-child {
+            border-bottom: none;
+        }
+
+        /* unread rows get a subtle highlight */
+        .notif-row.unread {
+            background: rgba(91, 138, 245, 0.07);
+        }
+
+        .notif-row:hover {
+            background: rgba(255,255,255,0.04);
+        }
+
+        /* colored circle icon beside each notification */
+        .notif-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .notif-icon.deposit  { background: rgba(33,150,243,0.15); color: #2196f3; }
+        .notif-icon.withdraw { background: rgba(255,152,0,0.15);  color: #ff9800; }
+        .notif-icon.send     { background: rgba(229,57,53,0.15);  color: #e53935; }
+        .notif-icon.receive  { background: rgba(76,175,80,0.15);  color: #4caf50; }
+
+        /* notification message text and timestamp */
+        .notif-msg {
+            font-size: 12.5px;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .notif-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        /* empty state inside dropdown */
+        .notif-empty {
+            padding: 32px 16px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+    </style>
 </head>
 <body>
     <form runat="server">
@@ -16,7 +177,7 @@
 
         <div class="shell">
 
-            <%-- LEFT SIDEBAR --%>
+            <%-- left sidebar navigation --%>
             <div class="sidebar">
                 <div class="sidebar-logo">
                     <div class="logo-icon">&#9729;</div>
@@ -27,11 +188,13 @@
                 </div>
 
                 <nav class="sidebar-nav">
+                    <%-- main section --%>
                     <div class="nav-section-label">MAIN</div>
                     <a href="~/Pages/Main/Dashboard.aspx" runat="server" class="nav-item">
                         <span class="nav-icon">&#9632;</span> Dashboard
                     </a>
 
+                    <%-- transactions section --%>
                     <div class="nav-section-label">TRANSACTIONS</div>
                     <a href="~/Pages/Main/Deposit.aspx" runat="server" class="nav-item">
                         <span class="nav-icon">&#8595;</span> Deposit
@@ -43,6 +206,7 @@
                         <span class="nav-icon">&#10148;</span> Send CloudMoney
                     </a>
 
+                    <%-- reports section --%>
                     <div class="nav-section-label">REPORTS</div>
                     <a href="~/Pages/Reports/StatementOfAccount.aspx" runat="server" class="nav-item">
                         <span class="nav-icon">&#9776;</span> Statement of Account
@@ -54,12 +218,14 @@
                         <span class="nav-icon">&#8652;</span> Sent &amp; Received
                     </a>
 
+                    <%-- account section --%>
                     <div class="nav-section-label">ACCOUNT</div>
                     <a href="~/Pages/Account/AccountInfo.aspx" runat="server" class="nav-item">
                         <span class="nav-icon">&#9998;</span> Account Info
                     </a>
+                    <%-- &#9679; is a plain bullet-style circle, consistent with the monochrome icon theme --%>
                     <a href="~/Pages/Account/ChangePassword.aspx" runat="server" class="nav-item">
-                        <span class="nav-icon">&#128274;</span> Change Password
+                        <span class="nav-icon">&#9679;</span> Change Password
                     </a>
                     <a href="~/Pages/Authentication/Logout.aspx" runat="server" class="nav-item nav-logout">
                         <span class="nav-icon">&#9099;</span> Log Out
@@ -67,15 +233,91 @@
                 </nav>
             </div>
 
-            <%-- MAIN CONTENT AREA --%>
+            <%-- main content area --%>
             <div class="main-area">
 
-                <%-- TOP BAR --%>
+                <%-- top bar: notification bell + user info + avatar --%>
                 <div class="topbar">
-                    <div class="topbar-title">
-                        <asp:Label ID="lblPageTitle" runat="server" Text="Dashboard" />
-                    </div>
+
+                    <%-- left side intentionally empty — title is page-specific --%>
+                    <div class="topbar-title"></div>
+
                     <div class="topbar-user">
+
+                        <%-- notification bell with unread badge and dropdown --%>
+                        <div class="notif-wrapper" id="notifWrapper">
+
+                            <%-- bell button toggles the dropdown open and closed --%>
+                            <button type="button" class="notif-bell" onclick="toggleNotif(event)" title="Notifications">
+                                &#128276;
+                            </button>
+
+                            <%-- red badge showing unread count — hidden when all are read --%>
+                            <asp:Panel ID="pnlNotifBadge" runat="server" Visible="false">
+                                <div class="notif-badge">
+                                    <asp:Label ID="lblNotifCount" runat="server" Text="0" />
+                                </div>
+                            </asp:Panel>
+
+                            <%-- notification dropdown panel --%>
+                            <div class="notif-dropdown" id="notifDropdown">
+
+                                <%-- header row with title and mark-all-as-read button --%>
+                                <div class="notif-header">
+                                    <span class="notif-header-title">Notifications</span>
+                                    <%-- postback button saves the current datetime to the db as the last-read marker --%>
+                                    <asp:Button ID="btnMarkAllRead" runat="server"
+                                        Text="Mark all as read"
+                                        CssClass="notif-mark-read"
+                                        OnClick="btnMarkAllRead_Click"
+                                        CausesValidation="false" />
+                                </div>
+
+                                <%-- scrollable notification list --%>
+                                <div class="notif-list">
+
+                                    <%-- empty state: shown when the user has no transactions --%>
+                                    <asp:Panel ID="pnlNoNotifs" runat="server" Visible="false">
+                                        <div class="notif-empty">&#128276; No recent activity.</div>
+                                    </asp:Panel>
+
+                                    <%-- repeater: one row per recent transaction (last 20) --%>
+                                    <asp:Repeater ID="rptNotifications" runat="server">
+                                        <ItemTemplate>
+                                            <%-- unread rows are highlighted; read check uses transaction date vs last-read datetime --%>
+                                            <div class='notif-row <%# IsUnread(Eval("TransactionDate")) ? "unread" : "" %>'>
+
+                                                <%-- colored circle icon based on transaction type --%>
+                                                <div class='<%# GetNotifIcon(Eval("TransactionType").ToString()) %>'>
+                                                    <%# Eval("TransactionType").ToString() == "D" ? "↓"
+                                                      : Eval("TransactionType").ToString() == "W" ? "↑"
+                                                      : Eval("TransactionType").ToString() == "S" ? "→"
+                                                      : "←" %>
+                                                </div>
+
+                                                <div>
+                                                    <%-- human-readable message describing the transaction --%>
+                                                    <div class="notif-msg">
+                                                        <%# GetNotifMessage(
+                                                                Eval("TransactionType").ToString(),
+                                                                Eval("Amount").ToString(),
+                                                                Eval("OtherPartyName").ToString()) %>
+                                                    </div>
+                                                    <%-- formatted date and time of the transaction --%>
+                                                    <div class="notif-time">
+                                                        <%# Eval("TransactionDate", "{0:MMM dd, yyyy hh:mm tt}") %>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </ItemTemplate>
+                                    </asp:Repeater>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <%-- user name and account number display --%>
                         <div class="topbar-user-info">
                             <div class="topbar-name">
                                 <asp:Label ID="lblUserName" runat="server" Text="" />
@@ -84,13 +326,16 @@
                                 Acct # <asp:Label ID="lblAccountNo" runat="server" Text="" />
                             </div>
                         </div>
+
+                        <%-- avatar circle showing the user's initials --%>
                         <div class="avatar">
                             <asp:Label ID="lblInitials" runat="server" Text="" />
                         </div>
+
                     </div>
                 </div>
 
-                <%-- PAGE CONTENT --%>
+                <%-- page-specific content injected here by each .aspx page --%>
                 <div class="page-content">
                     <asp:ContentPlaceHolder ID="MainContent" runat="server" />
                 </div>
@@ -99,5 +344,23 @@
         </div>
 
     </form>
+
+    <script>
+		// toggle the notification dropdown open or closed on bell click
+		function toggleNotif(e) {
+			e.stopPropagation();
+			var dropdown = document.getElementById('notifDropdown');
+			dropdown.classList.toggle('open');
+		}
+
+		// close the dropdown when the user clicks anywhere outside the bell wrapper
+		document.addEventListener('click', function (e) {
+			var wrapper = document.getElementById('notifWrapper');
+			if (wrapper && !wrapper.contains(e.target)) {
+				document.getElementById('notifDropdown').classList.remove('open');
+			}
+		});
+	</script>
+
 </body>
 </html>

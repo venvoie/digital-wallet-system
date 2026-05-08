@@ -7,6 +7,7 @@ namespace DigitalWalletSystem.Pages.Account
 {
 	public partial class AccountInfo : Page
 	{
+		// ── page load — fetch and display account info on first visit ──
 		protected void Page_Load(object sender, EventArgs e)
 		{
 			if (!IsPostBack)
@@ -15,6 +16,7 @@ namespace DigitalWalletSystem.Pages.Account
 			}
 		}
 
+		// ── queries the users and wallets tables and populates all labels ──
 		private void LoadAccountInfo()
 		{
 			int userID = Convert.ToInt32(Session["UserID"]);
@@ -22,6 +24,7 @@ namespace DigitalWalletSystem.Pages.Account
 
 			using (SqlConnection conn = new SqlConnection(connStr))
 			{
+				// join wallets to get balance and total sent alongside user details
 				string sql = @"
                     SELECT  u.AccountNumber,
                             u.FullName,
@@ -43,23 +46,25 @@ namespace DigitalWalletSystem.Pages.Account
 
 					if (dr.Read())
 					{
+						// populate basic account information
 						lblAccountNumber.Text = dr["AccountNumber"].ToString();
 						lblFullName.Text = dr["FullName"].ToString();
 						lblUsername.Text = dr["Username"].ToString();
 						lblEmail.Text = dr["Email"].ToString();
+
+						// format registration date as readable date and time
 						lblDateRegistered.Text = Convert.ToDateTime(dr["DateRegistered"])
 														.ToString("MMMM dd, yyyy hh:mm tt");
-						lblBalance.Text = Convert.ToDecimal(dr["CurrentBalance"])
-														.ToString("N2");
-						lblTotalSent.Text = Convert.ToDecimal(dr["TotalSentAmount"])
-														.ToString("N2");
 
+						// format balance and total sent as currency with two decimal places
+						lblBalance.Text = Convert.ToDecimal(dr["CurrentBalance"]).ToString("N2");
+						lblTotalSent.Text = Convert.ToDecimal(dr["TotalSentAmount"]).ToString("N2");
+
+						// render active or inactive badge based on the isactive flag
 						bool isActive = Convert.ToBoolean(dr["IsActive"]);
 						lblStatus.Text = isActive
 							? "<span class='badge-active'>Active</span>"
 							: "<span class='badge-inactive'>Inactive</span>";
-
-						// Master page handles topbar automatically from session
 					}
 				}
 			}

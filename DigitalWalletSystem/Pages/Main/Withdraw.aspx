@@ -2,118 +2,122 @@
 
 <asp:Content ID="Content1" ContentPlaceHolderID="HeadContent" runat="server">
     <style>
-
-        /* stretch the card to fill available width with matching side margins */
-        .withdraw-card {
-            max-width: calc(100% - 48px);
-            width: 100%;
-            margin-left: auto;
-            margin-right: auto;
-            box-sizing: border-box;
-        }
-
         /* confirmation modal overlay */
-        #confirmModal {
+        #withdrawModal {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.45);
+            background: rgba(0, 0, 0, 0.45);
             z-index: 9999;
             align-items: center;
             justify-content: center;
         }
 
-        #confirmModal.active { display: flex; }
+        /* show class toggled by js */
+        #withdrawModal.show {
+            display: flex;
+        }
 
         /* modal box */
         .modal-box {
             background: #fff;
             border-radius: 12px;
-            padding: 32px 28px 24px;
-            max-width: 380px;
+            padding: 28px 32px;
+            max-width: 400px;
             width: 90%;
             box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-            text-align: center;
         }
 
-        .modal-box h3 { margin: 0 0 8px; font-size: 1.15rem; }
-        .modal-box p  { margin: 0 0 24px; color: #555; font-size: 0.95rem; }
-
-        .modal-actions { display: flex; gap: 12px; justify-content: center; }
-
-        .modal-actions .btn-cancel {
-            padding: 10px 24px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            background: #f5f5f5;
-            cursor: pointer;
-            font-size: 0.95rem;
+        /* modal title */
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
         }
 
-        .modal-actions .btn-confirm {
-            padding: 10px 24px;
-            border: none;
-            border-radius: 6px;
-            background: #2563eb;
-            color: #fff;
-            cursor: pointer;
-            font-size: 0.95rem;
+        /* modal body text */
+        .modal-body {
+            font-size: 15px;
+            color: #555;
+            margin-bottom: 24px;
+        }
+
+        /* modal action row */
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
         }
     </style>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
 
-    <%-- confirmation modal --%>
-    <div id="confirmModal">
+    <%-- confirmation modal (shown before actual form submit) --%>
+    <div id="withdrawModal">
         <div class="modal-box">
-            <h3>Confirm Withdrawal</h3>
-            <p id="confirmMsg">Are you sure you want to withdraw <strong id="confirmAmt"></strong>?</p>
+            <div class="modal-title">Confirm withdrawal</div>
+            <div class="modal-body" id="modalMessage">Are you sure you want to withdraw this amount?</div>
             <div class="modal-actions">
-                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button class="btn-confirm" onclick="submitWithdraw()">Yes, Withdraw</button>
+                <%-- cancel button — closes modal without submitting --%>
+                <button type="button" class="btn" onclick="closeModal()"
+                    style="padding: 10px 24px; background: #f0f0f0; border: none; border-radius: 6px; cursor: pointer;">
+                    Cancel
+                </button>
+                <%-- confirm button — proceeds with the actual withdrawal --%>
+                <button type="button" class="btn btn-primary" id="btnConfirm"
+                    style="padding: 10px 24px; cursor: pointer;"
+                    onclick="confirmWithdraw()">
+                    Confirm
+                </button>
             </div>
         </div>
     </div>
 
-    <%-- main card — expanded horizontally --%>
-    <div class="card withdraw-card">
+    <%-- main withdraw card — full width with left/right margin --%>
+    <div class="card" style="max-width: 100%; margin: 0 24px;">
         <div class="card-title">Withdraw Funds</div>
 
-        <%-- current balance --%>
-        <div class="balance-card" style="margin-bottom:24px; padding:16px 20px;">
-            <div class="balance-label">Current Balance</div>
-            <div class="balance-amount" style="font-size:26px;">
-                &#8369; <asp:Label ID="lblCurrentBalance" runat="server" Text="0.00" />
+        <%-- current balance display --%>
+        <div class="balance-card" style="margin-bottom: 24px; padding: 16px 20px;">
+            <div>
+                <div class="balance-label">Current Balance</div>
+                <div class="balance-amount" style="font-size: 26px;">
+                    &#8369; <asp:Label ID="lblCurrentBalance" runat="server" Text="0.00" />
+                </div>
             </div>
         </div>
 
-        <%-- error alert --%>
+        <%-- error alert panel --%>
         <asp:Panel ID="pnlError" runat="server" Visible="false">
             <div class="alert alert-error">
-                <asp:Label ID="lblError" runat="server" />
+                <asp:Label ID="lblError" runat="server" Text="" />
             </div>
         </asp:Panel>
 
-        <%-- success alert --%>
+        <%-- success alert panel --%>
         <asp:Panel ID="pnlSuccess" runat="server" Visible="false">
             <div class="alert alert-success">
-                <asp:Label ID="lblSuccess" runat="server" />
+                <asp:Label ID="lblSuccess" runat="server" Text="" />
             </div>
         </asp:Panel>
 
-        <%-- amount input --%>
+        <%-- amount input field --%>
         <div class="form-group">
             <label class="form-label">Amount to Withdraw</label>
             <asp:TextBox ID="txtAmount" runat="server"
                 CssClass="form-control"
                 placeholder="e.g. 500"
                 MaxLength="10" />
+
+            <%-- required field validator --%>
             <asp:RequiredFieldValidator ID="rfvAmount" runat="server"
                 ControlToValidate="txtAmount"
                 ErrorMessage="Please enter an amount."
                 CssClass="alert alert-error"
                 Display="Dynamic" />
+
+            <%-- format validator: allows whole numbers or decimals up to 2 places --%>
             <asp:RegularExpressionValidator ID="revAmount" runat="server"
                 ControlToValidate="txtAmount"
                 ValidationExpression="^\d+(\.\d{1,2})?$"
@@ -122,54 +126,65 @@
                 Display="Dynamic" />
         </div>
 
-        <%-- withdrawal rules --%>
-        <div class="alert alert-info" style="margin-bottom:20px;">
+        <%-- withdrawal rules info box --%>
+        <div class="alert alert-info" style="margin-bottom: 20px;">
             <strong>Withdrawal Rules:</strong><br />
-            &#8226; Minimum: <strong>&#8369;100.00</strong><br />
-            &#8226; Maximum per transaction: <strong>&#8369;2,000.00</strong><br />
-            &#8226; Must be divisible by <strong>&#8369;100.00</strong><br />
-            &#8226; Insufficient funds will be rejected
+            &#8226; Minimum withdrawal: <strong>&#8369;100.00</strong><br />
+            &#8226; Maximum withdrawal per transaction: <strong>&#8369;2,000.00</strong><br />
+            &#8226; Amount must be divisible by <strong>&#8369;100.00</strong><br />
+            &#8226; Withdrawal will be rejected if funds are insufficient
         </div>
 
-        <%-- withdraw button — triggers modal, not postback directly --%>
+        <%-- withdraw button — triggers js confirmation modal instead of direct postback --%>
         <asp:Button ID="btnWithdraw" runat="server"
             Text="Withdraw"
             CssClass="btn btn-primary"
+            OnClick="btnWithdraw_Click"
             OnClientClick="return openModal();"
-            OnClick="btnWithdraw_Click"
-            style="width:auto; padding:10px 32px;" />
+            style="width: auto; padding: 10px 32px;" />
 
-        <%-- hidden real submit button used by the modal --%>
-        <asp:Button ID="btnConfirmed" runat="server"
-            Text="Confirmed"
+        <%-- hidden trigger used by js to actually fire the postback after confirmation --%>
+        <asp:Button ID="btnWithdrawConfirmed" runat="server"
+            Text=""
             OnClick="btnWithdraw_Click"
-            style="display:none;" />
+            style="display: none;" />
     </div>
 
     <script>
-		// open modal and show the formatted amount before confirming
-		function openModal() {
-			var raw = document.getElementById('<%= txtAmount.ClientID %>').value.trim();
-            var num = parseFloat(raw);
+        // open the confirmation modal after client-side validation passes
+        function openModal() {
+            // run asp.net validators first
+            if (typeof Page_ClientValidate === 'function' && !Page_ClientValidate()) {
+                return false; // stop if validation fails
+            }
 
-            // let asp.net validators run first — abort modal if input is empty/invalid
-            if (!raw || isNaN(num)) return true; // true = allow postback so validators fire
+            // grab the entered amount to display in the modal message
+            var amount = document.getElementById('<%= txtAmount.ClientID %>').value;
+            document.getElementById('modalMessage').innerText =
+                'Are you sure you want to withdraw ₱' + parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 }) + '?';
 
-            document.getElementById('confirmAmt').textContent = '\u20B1' + num.toFixed(2);
-            document.getElementById('confirmModal').classList.add('active');
-            return false; // prevent postback until user confirms
+            // show the modal
+            document.getElementById('withdrawModal').classList.add('show');
+
+            // prevent default form submit — modal handles it
+            return false;
         }
 
-        // close the modal without submitting
+        // close modal without submitting
         function closeModal() {
-            document.getElementById('confirmModal').classList.remove('active');
+            document.getElementById('withdrawModal').classList.remove('show');
         }
 
-        // programmatically click the hidden confirmed button to trigger postback
-        function submitWithdraw() {
+        // user confirmed — trigger the hidden button to fire the real postback
+        function confirmWithdraw() {
             closeModal();
-            document.getElementById('<%= btnConfirmed.ClientID %>').click();
-		}
+            document.getElementById('<%= btnWithdrawConfirmed.ClientID %>').click();
+        }
+
+        // close modal if user clicks outside the box
+        document.getElementById('withdrawModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
 	</script>
 
 </asp:Content>
