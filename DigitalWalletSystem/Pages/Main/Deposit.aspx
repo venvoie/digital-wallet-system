@@ -2,7 +2,6 @@
 
 <asp:Content ID="Content1" ContentPlaceHolderID="HeadContent" runat="server">
     <style>
-        /* confirmation modal overlay */
         #depositModal {
             display: none;
             position: fixed;
@@ -13,12 +12,8 @@
             justify-content: center;
         }
 
-        /* show class toggled by js */
-        #depositModal.show {
-            display: flex;
-        }
+        #depositModal.show { display: flex; }
 
-        /* modal box */
         .modal-box {
             background: #fff;
             border-radius: 12px;
@@ -28,53 +23,35 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.18);
         }
 
-        /* modal title */
-        .modal-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        /* modal body text */
-        .modal-body {
-            font-size: 15px;
-            color: #555;
-            margin-bottom: 24px;
-        }
-
-        /* modal action row */
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-        }
+        .modal-title  { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+        .modal-body   { font-size: 15px; color: #555; margin-bottom: 24px; }
+        .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
     </style>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
 
-    <%-- confirmation modal (shown before actual form submit) --%>
+    <%-- confirmation modal --%>
     <div id="depositModal">
         <div class="modal-box">
             <div class="modal-title">Confirm deposit</div>
             <div class="modal-body" id="modalMessage">Are you sure you want to deposit this amount?</div>
             <div class="modal-actions">
-                <%-- cancel button — closes modal without submitting --%>
+
                 <button type="button" class="btn" onclick="closeModal()"
                     style="padding: 10px 24px; background: #f0f0f0; border: none; border-radius: 6px; cursor: pointer;">
                     Cancel
                 </button>
-                <%-- confirm button — proceeds with the actual deposit --%>
+
                 <button type="button" class="btn btn-primary" id="btnConfirm"
-                    style="padding: 10px 24px; cursor: pointer;"
-                    onclick="confirmDeposit()">
+                    style="padding: 10px 24px; cursor: pointer;" onclick="confirmDeposit()">
                     Confirm
                 </button>
             </div>
         </div>
     </div>
 
-    <%-- main deposit card — full width with left/right margin --%>
+    <%-- main deposit card --%>
     <div class="card" style="max-width: 100%; margin: 0 24px;">
         <div class="card-title">Deposit Funds</div>
 
@@ -88,42 +65,29 @@
             </div>
         </div>
 
-        <%-- error alert panel --%>
+        <%-- error and success alert panels --%>
         <asp:Panel ID="pnlError" runat="server" Visible="false">
-            <div class="alert alert-error">
-                <asp:Label ID="lblError" runat="server" Text="" />
-            </div>  
+            <div class="alert alert-error"><asp:Label ID="lblError" runat="server" /></div>
         </asp:Panel>
-
-        <%-- success alert panel --%>
         <asp:Panel ID="pnlSuccess" runat="server" Visible="false">
-            <div class="alert alert-success">
-                <asp:Label ID="lblSuccess" runat="server" Text="" />
-            </div>
+            <div class="alert alert-success"><asp:Label ID="lblSuccess" runat="server" /></div>
         </asp:Panel>
 
-        <%-- amount input field --%>
+        <%-- amount input with validators --%>
         <div class="form-group">
             <label class="form-label">Amount to Deposit</label>
-            <asp:TextBox ID="txtAmount" runat="server"
-                CssClass="form-control"
-                placeholder="e.g. 500"
-                MaxLength="10" />
+            <asp:TextBox ID="txtAmount" runat="server" CssClass="form-control" placeholder="e.g. 500" MaxLength="10" />
 
             <%-- required field validator --%>
             <asp:RequiredFieldValidator ID="rfvAmount" runat="server"
-                ControlToValidate="txtAmount"
-                ErrorMessage="Please enter an amount."
-                CssClass="alert alert-error"
-                Display="Dynamic" />
+                ControlToValidate="txtAmount" ErrorMessage="Please enter an amount."
+                CssClass="alert alert-error" Display="Dynamic" />
 
-            <%-- format validator: allows whole numbers or decimals up to 2 places --%>
+            <%-- format validator --%>
             <asp:RegularExpressionValidator ID="revAmount" runat="server"
-                ControlToValidate="txtAmount"
-                ValidationExpression="^\d+(\.\d{1,2})?$"
+                ControlToValidate="txtAmount" ValidationExpression="^\d+(\.\d{1,2})?$"
                 ErrorMessage="Please enter a valid amount."
-                CssClass="alert alert-error"
-                Display="Dynamic" />
+                CssClass="alert alert-error" Display="Dynamic" />
         </div>
 
         <%-- deposit rules info box --%>
@@ -135,56 +99,41 @@
             &#8226; Total balance must not exceed <strong>&#8369;10,000.00</strong>
         </div>
 
-        <%-- deposit button — triggers js confirmation modal instead of direct postback --%>
-        <asp:Button ID="btnDeposit" runat="server"
-            Text="Deposit"
-            CssClass="btn btn-primary"
-            OnClick="btnDeposit_Click"
-            OnClientClick="return openModal();"
+        <%-- triggers js confirmation modal before postback --%>
+        <asp:Button ID="btnDeposit" runat="server" Text="Deposit" CssClass="btn btn-primary"
+            OnClick="btnDeposit_Click" OnClientClick="return openModal();"
             style="width: auto; padding: 10px 32px;" />
 
-        <%-- hidden trigger used by js to actually fire the postback after confirmation --%>
-        <asp:Button ID="btnDepositConfirmed" runat="server"
-            Text=""
-            OnClick="btnDeposit_Click"
-            style="display: none;" />
+        <%-- hidden button used by js to fire the real postback after confirmation --%>
+        <asp:Button ID="btnDepositConfirmed" runat="server" Text="" OnClick="btnDeposit_Click" style="display: none;" />
     </div>
 
     <script>
-        // open the confirmation modal after client-side validation passes
-        function openModal() {
-            // run asp.net validators first
-            if (typeof Page_ClientValidate === 'function' && !Page_ClientValidate()) {
-                return false; // stop if validation fails
-            }
+		function openModal() {
+			if (typeof Page_ClientValidate === 'function' && !Page_ClientValidate()) return false;
 
-            // grab the entered amount to display in the modal message
-            var amount = document.getElementById('<%= txtAmount.ClientID %>').value;
+			// show the entered amount in the modal message
+			var amount = document.getElementById('<%= txtAmount.ClientID %>').value;
             document.getElementById('modalMessage').innerText =
                 'Are you sure you want to deposit ₱' + parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 }) + '?';
 
-            // show the modal
             document.getElementById('depositModal').classList.add('show');
-
-            // prevent default form submit — modal handles it
-            return false;
+            return false; // prevent default form submit
         }
 
         // close modal without submitting
-        function closeModal() {
-            document.getElementById('depositModal').classList.remove('show');
-        }
+        function closeModal() { document.getElementById('depositModal').classList.remove('show'); }
 
-        // user confirmed — trigger the hidden button to fire the real postback
+        // user confirmed
         function confirmDeposit() {
             closeModal();
             document.getElementById('<%= btnDepositConfirmed.ClientID %>').click();
-        }
+		}
 
-        // close modal if user clicks outside the box
-        document.getElementById('depositModal').addEventListener('click', function (e) {
-            if (e.target === this) closeModal();
-        });
+		// close modal on outside click
+		document.getElementById('depositModal').addEventListener('click', function (e) {
+			if (e.target === this) closeModal();
+		});
 	</script>
 
 </asp:Content>
